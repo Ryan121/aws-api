@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'Deploys an S3 bucket and DynamoDB table for facilitate a Terraform backend'
+
+#         Parameters-----------#
+# ------------------------------
+Parameters:
+  pBucketName:
+    Type: String
+    Description: 'S3 bucket name'
+    Default: 'rs-terraform-state-backend-120123'
+  pTableName:
+    Type: String
+    Description: 'DynoDB Table name'
+    Default: 'terraform_state'
+
+Resources:
+  TerraformLock:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref pTableName
+      AttributeDefinitions:
+        - AttributeName: "LockID"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "LockID"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+    DependsOn:
+      - TerraformBackendPolicy
+
+  TerraformBackendPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: TerraformBackendPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - 'dynamodb:GetItem*'
+              - 'dynamodb:Query*'
+              - 'dynamodb:Scan*'
+              - 'dynamodb:PutItem*'
+              - 'dynamodb:UpdateItem*'
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+            Resource: 'arn:aws:s3:::${pBucketName}/405831616436/*'
+      Roles:
+        - Ref: "TerraformBackendRole"
+
+  TerraformBackendRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "dynamodb.amazonaws.com"
+                - "s3.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+  
+  S3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Ref pBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      ObjectLockEnabled: True
+      VersioningConfiguration:
+        Status: Enabled
+    DependsOn:
+      - TerraformBackendPolicy
