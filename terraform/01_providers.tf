@@ -1,7 +1,5 @@
 /*# Backend must remain commented until the Bucket
- and the DynamoDB table are created. 
- After the creation you can uncomment it,
- run "terraform init" and then "terraform apply" */
+ and the DynamoDB table are created.  */
 
 terraform {
   required_providers {
@@ -25,13 +23,36 @@ provider "aws" {
   region = var.aws_region
 }
 
+/* Provision dyno_db table  and s3 backend via terraform when using a local remote backend  */
 
+# resource "aws_dynamodb_table" "terraform-lock" {
+#     name           = "terraform_state"
+#     read_capacity  = 5
+#     write_capacity = 5
+#     hash_key       = "LockID"
+#     attribute {
+#         name = "LockID"
+#         type = "S"
+#     }
+#     tags = {
+#         "Name" = "DynamoDB Terraform State Lock Table"
+#     }
+# }
 
-# terraform {
-#   backend "s3" {
-#     bucket         = "angelo-terraform-state-backend"
-#     key            = "terraform.tfstate"
-#     region         = "eu-west-1"
-#     dynamodb_table = "terraform_state"
-#   }
+# resource "aws_s3_bucket" "bucket" {
+#     bucket = "angelo-terraform-state-backend"
+#     versioning {
+#         enabled = true
+#     }
+#     server_side_encryption_configuration {
+#         rule {
+#             apply_server_side_encryption_by_default {
+#                 sse_algorithm = "AES256"
+#             }
+#         }
+#     }
+#     object_lock_configuration {
+#         object_lock_enabled = "Enabled"
+#     }
+
 # }
